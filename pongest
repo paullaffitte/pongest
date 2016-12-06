@@ -1,0 +1,99 @@
+#!/usr/bin/python
+#coding: utf8
+
+import sys
+import pygame
+from pygame.locals import *
+import random
+sys.path.append('classes/')
+sys.path.append('res/')
+from Ball import *
+from Paddle import *
+from Coord import *
+from Res import *
+
+def display_elem(elem):
+    Res.window.blit(Res.images[elem.__class__.__name__], (elem.position.x, elem.position.y))
+
+def launch_ball(ball):
+    speed = Coord(random.randint(-1, 1), random.uniform(-1, 1))
+    while speed.x == 0:
+        speed.x = random.randint(-1, 1)
+    ball.speed = speed
+    ball.set_norm_speed(config.SPEED)
+    ball.launch_ball(Coord(config.WIDTH_SCREEN / 2 - ball.size.x / 2, config.HEIGHT_SCREEN / 2 - ball.size.y / 2), speed)
+
+def pong():
+    pygame.mixer.music.set_volume(theme.MUSIC_VOLUME)
+    pygame.mixer.music.play(-1)
+    ball = Ball(Coord(20, 20))
+    launch_ball(ball)
+    ball.set_norm_speed(0)
+    paddle_p1 = Paddle(Coord(10, (config.HEIGHT_SCREEN - 150) / 2), config.SPEED, Coord(20, 150))
+    paddle_p2 = Paddle(Coord(config.WIDTH_SCREEN - 30, (config.HEIGHT_SCREEN - 150) / 2), config.SPEED, Coord(20, 150))
+
+    score_p1 = 0
+    score_p2 = 0
+
+    ball_launched = False
+    play = True
+    while play:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                play = 0
+            if event.type == KEYDOWN or event.type == KEYUP:
+                if event.key == config.p1_move_up:
+                    paddle_p1.move_up(event.type == KEYDOWN)
+                elif event.key == config.p1_move_down:
+                    paddle_p1.move_down(event.type == KEYDOWN)
+                elif event.key == config.p1_speed_up:
+                    paddle_p1.speed_up(event.type == KEYDOWN)
+                elif event.key == config.p1_speed_down:
+                    paddle_p1.speed_down(event.type == KEYDOWN)
+
+                elif event.key == config.p2_move_up:
+                    paddle_p2.move_up(event.type == KEYDOWN)
+                elif event.key == config.p2_move_down:
+                    paddle_p2.move_down(event.type == KEYDOWN)
+                elif event.key == config.p2_speed_up:
+                    paddle_p2.speed_up(event.type == KEYDOWN)
+                elif event.key == config.p2_speed_down:
+                    paddle_p2.speed_down(event.type == KEYDOWN)
+
+                elif event.type == KEYDOWN and event.key == pygame.K_SPACE and not ball_launched:
+                    launch_ball(ball)
+                    ball_launched = True
+        paddle_p2.move()
+        paddle_p1.move()
+        ball.move()
+
+        if ball.collidePaddle(paddle_p2) or ball.collidePaddle(paddle_p1):
+            Res.sounds["paddle"].play()
+            paddle_p1.speed = ball.get_norm_speed()
+            paddle_p2.speed = ball.get_norm_speed()
+        if ball.position.y + ball.size.y > config.HEIGHT_SCREEN and ball.speed.y > 0 or ball.position.y < 0 and ball.speed.y < 0:
+            Res.sounds["wall"].play()
+            ball.speed.y *= -1
+            if config.SPEED_WALL == True:
+                ball.set_norm_speed(ball.get_norm_speed() + config.ACCELERATION)
+                paddle_p1.speed = ball.get_norm_speed()
+                paddle_p2.speed = ball.get_norm_speed()
+        if ball.position.x + ball.size.x > config.WIDTH_SCREEN or ball.position.x < 0:
+            if ball.position.x + ball.size.x > config.WIDTH_SCREEN:
+                score_p1 += 1
+            if ball.position.x < 0:
+                score_p2 += 1
+            Res.sounds["score"].play()
+            launch_ball(ball)
+            paddle_p1.speed = config.SPEED
+            paddle_p2.speed = config.SPEED
+
+        Res.window.fill(theme.BACKGROUND_COLOR)
+        score = Res.font.render(str(score_p1) + "-" + str(score_p2), 1, theme.FONT_COLOR)
+        Res.window.blit(score, (config.WIDTH_SCREEN / 2 - score.get_width() / 2, config.HEIGHT_SCREEN / 2 - score.get_height() / 2))
+        display_elem(ball)
+        display_elem(paddle_p2)
+        display_elem(paddle_p1)
+        pygame.display.flip()
+
+pong()
